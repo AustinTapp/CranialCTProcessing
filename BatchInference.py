@@ -15,6 +15,8 @@ def Segment(image_path, filename, save_directory):
     ctImage = sitk.ReadImage(image_path)
     # ctImage.SetDirection((-1.0, 0.0, 0.0, 0.0, -1.0, 0.0, 0.0, 0.0, 1.0)) #for latent diffusion code outputs only
     ctImage = DataProcessing.AlignAndRescale(ctImage, sitk.ReadImage('ct.nii.gz'))
+    sitk.WriteImage(ctImage, image_name + "_toTemplate.nii.gz")
+
     binaryImage = DataProcessing.CreateBoneMask(ctImage)
     ctImage = DataProcessing.ResampleAndMaskImage(ctImage, binaryImage)
 
@@ -24,8 +26,10 @@ def Segment(image_path, filename, save_directory):
     model = ModelConfiguration.adaptModel(modelPath, device)
     imageData = ModelConfiguration.adaptData(ctImage, device)
 
-    landmarks, all_seven_labels = ModelConfiguration.runModel(model, ctImage, binaryImage, imageData)
-    sitk.WriteImage(all_seven_labels, image_name + "_labeled.nii.gz")
+    landmarks, five_boneLabels, seven_boneLabels = ModelConfiguration.runModel(model, ctImage, binaryImage, imageData)
+
+    sitk.WriteImage(five_boneLabels, image_name + "_5Labeled.nii.gz")
+    sitk.WriteImage(seven_boneLabels, image_name + "_7Labeled.nii.gz")
 
     point_writer = vtk.vtkXMLPolyDataWriter()
     point_writer.SetFileName(image_name + "_landmarks.vtp")
