@@ -5,6 +5,53 @@ from scipy.spatial import Delaunay
 import torchio as tio
 import skimage
 import skimage.measure
+import warnings
+
+def rescale_intensity_to_reference(reference, input):
+    # Get the intensity range of the reference image
+    min_ref, max_ref = reference.min(), reference.max()
+
+    # Rescale the input image to match the intensity range of the reference image
+    rescaled_array = (input - input.min()) / (input.max() - input.min())
+    rescaled_array = rescaled_array * (max_ref - min_ref) + min_ref
+    return rescaled_array
+
+def toTemplateRegistration(image, template):
+    try:
+        RigidElastix = sitk.ElastixImageFilter()
+
+        RigidElastix.SetFixedImage(template)
+        RigidElastix.SetMovingImage(image)
+        RigidElastix.LogToConsoleOff()
+
+        rigid_map = RigidElastix.ReadParameterFile("Parameters_Rigid.txt")
+        RigidElastix.SetParameterMap(rigid_map)
+
+        RigidElastix.Execute()
+        TFM_image = RigidElastix.GetResultImage()
+
+        TFM_image_array = sitk.GetArrayFromImage(TFM_image)
+        Template_Image_array = sitk.GetArrayFromImage(template)
+
+        Final_Image_array_Rescaled = rescale_intensity_to_reference(Template_Image_array, TFM_image_array)
+        Final_Image_Rescaled = sitk.GetImageFromArray(Final_Image_array_Rescaled)
+
+        #spacing = np.array(image.GetSpacing()) * np.array(image.GetSize()) / np.array(template.GetSize())
+        #Final_Image_Rescaled.SetSpacing(spacing)
+
+        Final_Image_Rescaled.SetOrigin(template.GetOrigin())
+        Final_Image_Rescaled.SetDirection(template.GetDirection())
+
+        sitk.WriteImage(Final_Image_Rescaled, 'CTtoTemplateImage.nii.gz')
+        return Final_Image_Rescaled
+
+    except RuntimeError as e:
+        warnings.warn(str(e))
+
+
+def AlignAndRescale(ctImage, template):
+    CT_to_template = toTemplateRegistration(ctImage, template)
+    return CT_to_template
 
 def FloodFillHull(image):
     points = np.transpose(np.where(image))
@@ -57,7 +104,7 @@ def CreateBoneMask(ctImage, headMaskImage=None, minimumThreshold=100, maximumThr
     ctImageArray = sitk.GetArrayFromImage(ctImage)
     headMaskImageArray = sitk.GetArrayViewFromImage(headMaskImage)
 
-    # Appling the mask to the CT image
+    # Applying the mask to the CT image
     ctImageArray[headMaskImageArray == 0] = 0
 
     # Extracting the bones

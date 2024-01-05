@@ -70,3 +70,5 @@ landmarks, boneLabels = ModelConfiguration.runModel(model, ctImage, binaryImage,
 - The **runModel** function generates landmark and bone labeling predictions and resample them to the original CT image space.
 
 If you have any questions, please email Jiawei Liu at jiawei.liu@cuanschutz.edu
+
+**Note: when trying to run any images from the latent diffusion generative experiments, the image must undergo an IS rotation in Slicer to give a matrix of (-1, 0, 0, 0, -1, 0, 0, 0, 0, 1, 0)
